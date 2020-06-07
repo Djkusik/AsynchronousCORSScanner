@@ -59,12 +59,13 @@ class CORSChecker():
                 resp_data['headers'] = resp.headers
                 resp_data['status'] = resp.status
                 resp_data['url'] = resp.url
+                # debug print
                 print(str(resp.status) + " : " + url)
                 return await resp.read()
 
 
     async def bound_fetch(self, url, headers, resp_data):
-        with self.sem:
+        async with self.semaphore:
             await self.fetch(url, headers, resp_data)
 
 
@@ -127,7 +128,7 @@ class CORSChecker():
             resp_credentials = resp_data['headers'].get('access-control-allow-credentials')
 
             if test_origin == resp_origin:
-                print("The same origin " + str(url) + " : " + str(resp_origin) + " | " + str(test_origin))
+                print("The same origin returned for: " + str(url) + " : " + str(resp_origin) + " | " + str(test_origin))
             if resp_credentials == "true":
                 print("With credentials! " + str(url) + " : " + str(resp_origin) + " | " + str(test_origin))
 
