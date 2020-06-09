@@ -17,7 +17,11 @@ class CORSChecker():
     headers = None
     functions = [
         'test_reflect_origin',
-        'test_prefix_match'
+        'test_prefix_match',
+        'test_suffix_match',
+        'test_null',
+        'test_any_subdomain',
+        'test_http_trust'
     ]
 
     def __init__(self, urls, sem_size, headers=None):
@@ -132,18 +136,49 @@ class CORSChecker():
             if resp_credentials == "true":
                 print("With credentials! " + str(url) + " : " + str(resp_origin) + " | " + str(test_origin))
 
-
+    # "https://evil.com"
     async def test_reflect_origin(self, url):
         parsed_url = urlparse(url)
         test_origin = parsed_url.scheme + "://" + "evil.com"
         await self.check_cors_policy(url, test_origin)
 
-
+    # "https://www.example.evil.com"
     async def test_prefix_match(self, url):
         parsed_url = urlparse(url)
         test_origin = parsed_url.scheme + "://" + parsed_url.netloc.split(':')[0] + ".evil.com"
         await self.check_cors_policy(url, test_origin)
 
+    # "https://evilexample.com"
+    async def test_suffix_match(self, url):
+        parsed_url = urlparse(url)
+        sld = tldextract.extract(url.strip()).registered_domain
+        test_origin = parsed_url.scheme + "://" + "evil" + sld
+        await self.check_cors_policy(url, test_origin)
+
+    # "null"
+    async def test_null(self, url):
+        test_origin = "null"
+        await self.check_cors_policy(url, test_origin)
+
+    # "https://evil.www.example.com"
+    async def test_any_subdomain(self, url):
+        parsed_url = urlparse(url)
+        test_origin = parsed_url.scheme + "://" + "evil." + parsed_url.netloc.split(':')[0]
+        await self.check_cors_policy(url, test_origin)
+
+    # "http://example.com" (for https)
+    async def test_http_trust(self, url):
+        parsed_url = urlparse(url)
+        if parsed_url.scheme != "https":
+            return
+
+        test_origin = "http://" + parsed_url.netloc.split(':')[0]
+        await self.check_cors_policy(url, test_origin)
+
+    #Todo more methods
+    # "https://exampleAevil.com" "https://testAexampleAevil.com"
+    # "https://test.exampleAevil.com"
+    # "https://example[special_character].evil.com"
 
     def run(self):
         tasks = []
