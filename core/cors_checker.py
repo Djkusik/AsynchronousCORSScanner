@@ -2,17 +2,20 @@ import asyncio
 import aiohttp
 import tldextract
 import sys
+import logging
+import math
 
 try:
     from urllib.parse import urlparse
 except ImportError:
+    logging.warning("Importing urllib.parse failed. Importing urlparse now.")
     from urlparse import urlparse
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-class CORSChecker():
+class CORSChecker:
 
     headers = None
     functions = [
@@ -30,32 +33,28 @@ class CORSChecker():
 
         # for debugging
         self.excepted = [0]
-        self.nulled = [0]
         self.redirected = [0]
-        self.four = [0]
-        self.good = [0]
+        self.status_400 = [0]
+        self.worked = [0]
+        self.vulnerable = [0]
 
         if headers is not None:
             self.headers = headers
 
-        # Default policy for Python 3.8 cannot handle proxy, which could be useful for debugging
-        if sys.platform == 'win32':
-            self.loop_policy = asyncio.WindowsSelectorEventLoopPolicy()
-
-        # Only if CorsChecker is going to extend multiprocessing.Process, if not throw it away to the begging of file/main
         try:
             import uvloop
             uvloop.install()
         except ImportError:
+            logging.warning("Cannot import uvloop - You can fix it by 'pip install uvloop' (not accessible for Windows)")
             pass
 
 
     async def fetch(self, url, headers, resp_data):
         async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(
+            async with session.head(
                 url,
                 ssl=False,
-                timeout=30,
+                timeout=50,
                 allow_redirects=True,
                 # proxy='http://127.0.0.1:8081',
             ) as resp:
@@ -63,8 +62,9 @@ class CORSChecker():
                 resp_data['headers'] = resp.headers
                 resp_data['status'] = resp.status
                 resp_data['url'] = resp.url
-                # debug print
-                print(str(resp.status) + " : " + url)
+
+                logging.debug(str(resp.status) + ":: URL: " + url + " :: Testing: " + headers['Origin'])
+                print(str(resp.status) + ":: URL: " + url + " :: Testing: " + headers['Origin'])
                 return await resp.read()
 
 
@@ -92,35 +92,34 @@ class CORSChecker():
         if self.headers is not None:
             headers.update(self.headers)
 
+        # Find better way than dict
         resp_data = dict()
         try:
             resp_data['response'] = await self.bound_fetch(url, headers, resp_data)
         except:
             self.excepted[0] = self.excepted[0] + 1
             self.excepted.append(url)
-            print("Except : " + url)
-            return None
-        # Lot of debug saves/prints
-        if resp_data is None:
-            self.nulled[0] = self.excepted[0] + 1
-            self.nulled.append(url)
-            print("None Except : " + url)
+            logging.debug("Exception during fetching for URL:" + url + " and origin: " + test_origin)
+            print("Exception during fetching for URL:" + url + " and origin: " + test_origin)
             return None
 
-        if resp_data['status'] == 400:
-            self.four[0] = self.four[0] + 1
-            self.four.append(url)
-            print("400 Except : " + url)
+        # Lot of debug saves/prints
+        if math.floor(resp_data['status'] / 100) == 4:
+            self.status_400[0] = self.status_400[0] + 1
+            self.status_400.append(url)
+            logging.debug("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
+            print("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
             return None
 
         if not self.validate_domain_redirection(url, resp_data['url']):
             self.redirected[0] = self.redirected[0] + 1
             self.redirected.append(url)
-            print("Redirect Except : " + url)
+            logging.debug("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
+            print("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
             return None
 
-        self.good[0] = self.good[0] + 1
-        self.good.append(url)
+        self.worked[0] = self.worked[0] + 1
+        self.worked.append(url)
         return resp_data
 
 
@@ -132,9 +131,15 @@ class CORSChecker():
             resp_credentials = resp_data['headers'].get('access-control-allow-credentials')
 
             if test_origin == resp_origin:
-                print("The same origin returned for: " + str(url) + " : " + str(resp_origin) + " | " + str(test_origin))
+                logging.info("Returned the same origin for: " + url + " when testing for origin: " + test_origin)
+                print("Returned the same origin for: " + url + " when testing for origin: " + test_origin)
+                self.vulnerable[0] = self.vulnerable[0] + 1
+                self.vulnerable.append(url)
             if resp_credentials == "true":
-                print("With credentials! " + str(url) + " : " + str(resp_origin) + " | " + str(test_origin))
+                logging.info("Returned with credentials for: " + url + " when testing for origin: " + test_origin)
+                print("Returned with credentials for: " + url + " when testing for origin: " + test_origin)
+                self.vulnerable[0] = self.vulnerable[0] + 1
+                self.vulnerable.append(url)
 
     # "https://evil.com"
     async def test_reflect_origin(self, url):
@@ -182,7 +187,11 @@ class CORSChecker():
 
     def run(self):
         tasks = []
-        asyncio.set_event_loop_policy(self.loop_policy)
+        # Default policy for Python 3.8 cannot handle proxy, which could be useful for debugging
+        if sys.platform == 'win32':
+            loop_policy = asyncio.WindowsSelectorEventLoopPolicy()
+            asyncio.set_event_loop_policy(loop_policy)
+
         loop = asyncio.get_event_loop()
 
         for url in self.urls:
@@ -199,13 +208,13 @@ class CORSChecker():
         print("--------------------------------------------")
         print("Exception during connection:")
         print(self.excepted)
-        print("Empty response:")
-        print(self.nulled)
         print("400 returned:")
-        print(self.four)
+        print(self.status_400)
         print("Redirected to another domain:")
         print(self.redirected)
-        print("Working examples")
-        print(self.good)
+        print("Working examples:")
+        print(self.worked)
+        print("Vulnerable exmaples:")
+        print(self.vulnerable)
         print("--------------------------------------------")
 
