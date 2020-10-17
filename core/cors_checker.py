@@ -5,6 +5,7 @@ import sys
 import logging
 import math
 import functools
+import traceback
 
 from core.register import Register
 
@@ -32,7 +33,7 @@ class CORSChecker:
         self.redirected = [0]
         self.status_400 = [0]
         self.worked = [0]
-        self.vulnerable = [0]
+        self.mirrored_vuln = [0]
         self.credentials_vuln = [0]
 
         if headers is not None:
@@ -43,7 +44,7 @@ class CORSChecker:
             async with session.head(
                 url,
                 ssl=False,
-                timeout=50,
+                timeout=30,
                 allow_redirects=True,
                 # proxy='http://127.0.0.1:8081',
             ) as resp:
@@ -74,20 +75,21 @@ class CORSChecker:
         except:
             self.excepted[0] = self.excepted[0] + 1
             self.excepted.append(url)
-            logging.debug("Exception during fetching for URL:" + url + " and origin: " + test_origin)
+            logging.warning("Exception during fetching for URL:" + url + " and origin: " + test_origin)
+            traceback.print_exc()
             return None
 
         # Statistics
-        if not self.valid_status_code(url, resp_data):
+        if not self.valid_status_code(url, test_origin, resp_data):
             return None
-        if not self.valid_redirection_status(url, resp_data):
+        if not self.valid_redirection_status(url, test_origin, resp_data):
             return None
 
         self.worked[0] = self.worked[0] + 1
         self.worked.append(url)
         return resp_data
 
-    def valid_status_code(self, url, resp_data):
+    def valid_status_code(self, url, test_origin, resp_data):
         if math.floor(resp_data['status'] / 100) == 4:
             self.status_400[0] = self.status_400[0] + 1
             self.status_400.append(url)
@@ -95,7 +97,7 @@ class CORSChecker:
             return False
         return True
 
-    def valid_redirection_status(self, url, resp_data):
+    def valid_redirection_status(self, url, test_origin, resp_data):
         if not self.validate_domain_redirection(url, resp_data['url']):
             self.redirected[0] = self.redirected[0] + 1
             self.redirected.append(url)
@@ -120,14 +122,18 @@ class CORSChecker:
 
             if test_origin == resp_origin:
                 logging.info("Returned the same origin for: " + url + " when testing for origin: " + test_origin)
-                print("Returned the same origin for: " + url + " when testing for origin: " + test_origin)
-                self.vulnerable[0] = self.vulnerable[0] + 1
-                self.vulnerable.append(url)
+                self.add_vuln_domain('mirrored_origin', url)
             if resp_credentials == "true":
                 logging.info("Returned with credentials for: " + url + " when testing for origin: " + test_origin)
-                print("Returned with credentials for: " + url + " when testing for origin: " + test_origin)
-                self.vulnerable[0] = self.vulnerable[0] + 1
-                self.vulnerable.append(url)
+                self.add_vuln_domain('credentials', url)
+
+    def add_vuln_domain(self, type, url):
+        if type == 'mirrored_origin':
+            self.mirrored_vuln[0] = self.mirrored_vuln[0] + 1
+            self.mirrored_vuln.append(url)
+        elif type == 'credentials':
+            self.credentials_vuln[0] = self.credentials_vuln[0] + 1
+            self.credentials_vuln.append(url)
 
     # "https://evil.com"
     @register
@@ -175,18 +181,18 @@ class CORSChecker:
         await self.check_cors_policy(url, test_origin)
 
     # "http://example_.com"
-    @register
-    async def test_special_characters(self, url):
-        parsed_url = urlparse(url)
-        special_characters = ['_','-','"','{','}','+','^','%60','!','~','`',';','|','&',"'",'(',')','*',',','$','=','+',"%0b"]
-        origins = []
+    # @register
+    # async def test_special_characters(self, url):
+    #     parsed_url = urlparse(url)
+    #     special_characters = ['_','-','"','{','}','+','^','%60','!','~','`',';','|','&',"'",'(',')','*',',','$','=','+',"%0b"]
+    #     origins = []
 
-        for char in special_characters:
-            attempt = parsed_url.scheme + "://" + parsed_url.netloc.split(':')[0] + char + ".evil.com"
-            origins.append(attempt)
+    #     for char in special_characters:
+    #         attempt = parsed_url.scheme + "://" + parsed_url.netloc.split(':')[0] + char + ".evil.com"
+    #         origins.append(attempt)
 
-        for test_origin in origins:
-            await self.check_cors_policy(url, test_origin)
+    #     for test_origin in origins:
+    #         await self.check_cors_policy(url, test_origin)
 
     # "http://wwwAexample.com"
     @register
@@ -212,20 +218,19 @@ class CORSChecker:
                 tasks.append(asyncio.ensure_future(func(self, url)))
         loop.run_until_complete(asyncio.gather(*tasks))
 
-        self.print_results()
+        self.results()
 
-    #Debug
-    def print_results(self):
-        print("--------------------------------------------")
-        print("Exception during connection:")
-        print(self.excepted[0])
-        print("400 returned:")
-        print(self.status_400[0])
-        print("Redirected to another domain:")
-        print(self.redirected[0])
-        print("Working examples:")
-        print(self.worked[0])
-        print("Vulnerable examples:")
-        print(self.vulnerable[0])
-        print("--------------------------------------------")
-
+    # Stats and debug
+    def results(self):
+        logging.info("\n--------------------------------------------")
+        logging.info("Exception during connection:")
+        logging.info(self.excepted[0])
+        logging.info("400 returned:")
+        logging.info(self.status_400[0])
+        logging.info("Redirected to another domain:")
+        logging.info(self.redirected[0])
+        logging.info("Working examples:")
+        logging.info(self.worked[0])
+        logging.info("Vulnerable examples:")
+        logging.info(self.mirrored_vuln[0])
+        logging.info("--------------------------------------------")
