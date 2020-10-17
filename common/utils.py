@@ -1,4 +1,8 @@
+import functools
 import linecache
+import time
+import logging
+
 
 def normalize_url(i):
     if '://' in i:
@@ -19,3 +23,14 @@ def read_urls(path):
             urls.append(u)
 
     return urls
+
+
+def timer(func):
+    @functools.wraps(func)
+    def wrapper_timer(*args, **kwargs):
+        start_time = time.perf_counter()
+        func(*args, **kwargs)
+        end_time = time.perf_counter()
+        run_time = end_time - start_time
+        logging.info(f"--- {run_time} seconds ---")
+    return wrapper_timer

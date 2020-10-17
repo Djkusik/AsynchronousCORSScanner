@@ -4,6 +4,12 @@ import tldextract
 import sys
 import logging
 import math
+import functools
+
+from core.register import Register
+
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 try:
     from urllib.parse import urlparse
@@ -11,43 +17,26 @@ except ImportError:
     logging.warning("Importing urllib.parse failed. Importing urlparse now.")
     from urlparse import urlparse
 
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 
 class CORSChecker:
 
     headers = None
-    functions = [
-        'test_reflect_origin',
-        'test_prefix_match',
-        'test_suffix_match',
-        'test_null',
-        'test_any_subdomain',
-        'test_http_trust'
-    ]
+    register = Register()
 
     def __init__(self, urls, sem_size, headers=None):
         self.urls = urls
         self.semaphore = asyncio.Semaphore(sem_size)
 
-        # for debugging
+        # for debugging & statistics
         self.excepted = [0]
         self.redirected = [0]
         self.status_400 = [0]
         self.worked = [0]
         self.vulnerable = [0]
+        self.credentials_vuln = [0]
 
         if headers is not None:
             self.headers = headers
-
-        try:
-            import uvloop
-            uvloop.install()
-        except ImportError:
-            logging.warning("Cannot import uvloop - You can fix it by 'pip install uvloop' (not accessible for Windows)")
-            pass
-
 
     async def fetch(self, url, headers, resp_data):
         async with aiohttp.ClientSession(headers=headers) as session:
@@ -58,29 +47,16 @@ class CORSChecker:
                 allow_redirects=True,
                 # proxy='http://127.0.0.1:8081',
             ) as resp:
-                # Check later if it is possible to return data in more elegant way
                 resp_data['headers'] = resp.headers
                 resp_data['status'] = resp.status
                 resp_data['url'] = resp.url
 
                 logging.debug(str(resp.status) + ":: URL: " + url + " :: Testing: " + headers['Origin'])
-                print(str(resp.status) + ":: URL: " + url + " :: Testing: " + headers['Origin'])
                 return await resp.read()
-
 
     async def bound_fetch(self, url, headers, resp_data):
         async with self.semaphore:
             await self.fetch(url, headers, resp_data)
-
-
-    def validate_domain_redirection(self, url, resp_url):
-        domain = tldextract.extract(url).registered_domain
-        resp_domain = tldextract.extract(str(resp_url)).registered_domain
-
-        if domain.lower() != resp_domain.lower():
-            return False
-        return True
-
 
     async def send_request(self, url, test_origin):
         # Add some user-agent randomizer later
@@ -92,7 +68,6 @@ class CORSChecker:
         if self.headers is not None:
             headers.update(self.headers)
 
-        # Find better way than dict
         resp_data = dict()
         try:
             resp_data['response'] = await self.bound_fetch(url, headers, resp_data)
@@ -100,28 +75,41 @@ class CORSChecker:
             self.excepted[0] = self.excepted[0] + 1
             self.excepted.append(url)
             logging.debug("Exception during fetching for URL:" + url + " and origin: " + test_origin)
-            print("Exception during fetching for URL:" + url + " and origin: " + test_origin)
             return None
 
-        # Lot of debug saves/prints
-        if math.floor(resp_data['status'] / 100) == 4:
-            self.status_400[0] = self.status_400[0] + 1
-            self.status_400.append(url)
-            logging.debug("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
-            print("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
+        # Statistics
+        if not self.valid_status_code(url, resp_data):
             return None
-
-        if not self.validate_domain_redirection(url, resp_data['url']):
-            self.redirected[0] = self.redirected[0] + 1
-            self.redirected.append(url)
-            logging.debug("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
-            print("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
+        if not self.valid_redirection_status(url, resp_data):
             return None
 
         self.worked[0] = self.worked[0] + 1
         self.worked.append(url)
         return resp_data
 
+    def valid_status_code(self, url, resp_data):
+        if math.floor(resp_data['status'] / 100) == 4:
+            self.status_400[0] = self.status_400[0] + 1
+            self.status_400.append(url)
+            logging.debug("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
+            return False
+        return True
+
+    def valid_redirection_status(self, url, resp_data):
+        if not self.validate_domain_redirection(url, resp_data['url']):
+            self.redirected[0] = self.redirected[0] + 1
+            self.redirected.append(url)
+            logging.debug("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
+            return False
+        return True
+
+    def validate_domain_redirection(self, url, resp_url):
+        domain = tldextract.extract(url).registered_domain
+        resp_domain = tldextract.extract(str(resp_url)).registered_domain
+
+        if domain.lower() != resp_domain.lower():
+            return False
+        return True
 
     async def check_cors_policy(self, url, test_origin):
         resp_data = await self.send_request(url, test_origin)
@@ -142,18 +130,21 @@ class CORSChecker:
                 self.vulnerable.append(url)
 
     # "https://evil.com"
+    @register
     async def test_reflect_origin(self, url):
         parsed_url = urlparse(url)
         test_origin = parsed_url.scheme + "://" + "evil.com"
         await self.check_cors_policy(url, test_origin)
 
     # "https://www.example.evil.com"
+    @register
     async def test_prefix_match(self, url):
         parsed_url = urlparse(url)
         test_origin = parsed_url.scheme + "://" + parsed_url.netloc.split(':')[0] + ".evil.com"
         await self.check_cors_policy(url, test_origin)
 
     # "https://evilexample.com"
+    @register
     async def test_suffix_match(self, url):
         parsed_url = urlparse(url)
         sld = tldextract.extract(url.strip()).registered_domain
@@ -161,17 +152,20 @@ class CORSChecker:
         await self.check_cors_policy(url, test_origin)
 
     # "null"
+    @register
     async def test_null(self, url):
         test_origin = "null"
         await self.check_cors_policy(url, test_origin)
 
     # "https://evil.www.example.com"
+    @register
     async def test_any_subdomain(self, url):
         parsed_url = urlparse(url)
         test_origin = parsed_url.scheme + "://" + "evil." + parsed_url.netloc.split(':')[0]
         await self.check_cors_policy(url, test_origin)
 
     # "http://example.com" (for https)
+    @register
     async def test_http_trust(self, url):
         parsed_url = urlparse(url)
         if parsed_url.scheme != "https":
@@ -180,10 +174,30 @@ class CORSChecker:
         test_origin = "http://" + parsed_url.netloc.split(':')[0]
         await self.check_cors_policy(url, test_origin)
 
-    #Todo more methods
-    # "https://exampleAevil.com" "https://testAexampleAevil.com"
-    # "https://test.exampleAevil.com"
-    # "https://example[special_character].evil.com"
+    # "http://example_.com"
+    @register
+    async def test_special_characters(self, url):
+        parsed_url = urlparse(url)
+        special_characters = ['_','-','"','{','}','+','^','%60','!','~','`',';','|','&',"'",'(',')','*',',','$','=','+',"%0b"]
+        origins = []
+
+        for char in special_characters:
+            attempt = parsed_url.scheme + "://" + parsed_url.netloc.split(':')[0] + char + ".evil.com"
+            origins.append(attempt)
+
+        for test_origin in origins:
+            await self.check_cors_policy(url, test_origin)
+
+    # "http://wwwAexample.com"
+    @register
+    async def test_dot_to_char(self, url):
+        parsed_url = urlparse(url)
+        split_url = parsed_url.netloc.split('.')
+        if len(split_url) > 2:
+            test_origin = parsed_url.scheme + "://" + 'A'.join(split_url[:-1]) + '.' + split_url[-1]
+        else:
+            test_origin = parsed_url.scheme + "://" + 'evilA' + '.'.join(split_url)
+        await self.check_cors_policy(url, test_origin)
 
     def run(self):
         tasks = []
@@ -193,12 +207,9 @@ class CORSChecker:
             asyncio.set_event_loop_policy(loop_policy)
 
         loop = asyncio.get_event_loop()
-
         for url in self.urls:
-            for fname in self.functions:
-                func = getattr(self, fname)
-                tasks.append(asyncio.ensure_future(func(url)))
-
+            for func in self.register:
+                tasks.append(asyncio.ensure_future(func(self, url)))
         loop.run_until_complete(asyncio.gather(*tasks))
 
         self.print_results()
@@ -207,14 +218,14 @@ class CORSChecker:
     def print_results(self):
         print("--------------------------------------------")
         print("Exception during connection:")
-        print(self.excepted)
+        print(self.excepted[0])
         print("400 returned:")
-        print(self.status_400)
+        print(self.status_400[0])
         print("Redirected to another domain:")
-        print(self.redirected)
+        print(self.redirected[0])
         print("Working examples:")
-        print(self.worked)
-        print("Vulnerable exmaples:")
-        print(self.vulnerable)
+        print(self.worked[0])
+        print("Vulnerable examples:")
+        print(self.vulnerable[0])
         print("--------------------------------------------")
 
