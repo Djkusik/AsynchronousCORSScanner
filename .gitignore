@@ -149,3 +149,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+*.json
+*.txt
+!requirements.txt

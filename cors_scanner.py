@@ -7,7 +7,7 @@ from common.logger import setup_logger
 from core.cors_checker import CORSChecker
 
 # GLOBALS
-sem_size = 1000
+sem_size = 5000
 
 
 def main():
@@ -23,13 +23,13 @@ def main():
         global sem_size
         sem_size = 50
 
-    run(urls)
+    run(urls, cmd_args)
 
 
 @timer
-def run(urls):
+def run(urls, cmd_args):
     global sem_size
-    checker = CORSChecker(urls, sem_size)
+    checker = CORSChecker(urls, sem_size, cmd_args.headers, cmd_args.char_mode, cmd_args.if_report)
     checker.run()
 
 

@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from common.logger import log_level
 
@@ -9,6 +10,9 @@ class Args:
         self.value = None
         self.log_level = None
         self.log_filename = None
+        self.headers = None
+        self.char_mode = 0
+        self.if_report = False
 
 
 def parse_args():
@@ -17,12 +21,19 @@ def parse_args():
     parser.add_argument('-d', '--domain', help='Domain', type=str)
     parser.add_argument('-v', '--verbosity', help="Logging level", type=int, choices=range(1,6), default=4)
     parser.add_argument('-f', '--file', help='Path to log file', type=str)
+    parser.add_argument('-c', '--char', help='Bigger number will result in wider tests which uses special characters', type=int, choices=range(0,3), default=0)
+    parser.add_argument('-r', '--report', help='Create report', action='store_true')
     args = parser.parse_args()
 
     cmd_args = Args()
     cmd_args.is_path = True if args.list is not None else False
     cmd_args.value = args.list if cmd_args.is_path else args.domain
+    if cmd_args.value is None:
+        parser.print_help()
+        sys.exit(1)
     cmd_args.log_level = log_level(args.verbosity)
     cmd_args.log_filename = args.file
+    cmd_args.char_mode = args.char
+    cmd_args.if_report = args.report
 
     return cmd_args
