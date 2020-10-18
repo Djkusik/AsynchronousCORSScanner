@@ -29,7 +29,7 @@ def main():
 @timer
 def run(urls, cmd_args):
     global sem_size
-    checker = CORSChecker(urls, sem_size, cmd_args.headers, cmd_args.char_mode, cmd_args.if_report)
+    checker = CORSChecker(urls, sem_size, cmd_args.headers, cmd_args.char_mode, cmd_args.if_report, cmd_args.report_path)
     checker.run()
 
 

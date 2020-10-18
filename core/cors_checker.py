@@ -23,13 +23,14 @@ class CORSChecker:
 
     headers = None
     register = Register()
-    stats = Statistics()
 
-    def __init__(self, urls, sem_size, headers=None, char_mode=0, if_report=False):
+    def __init__(self, urls, sem_size, headers=None, char_mode=0, if_report=False, report_path='./report/'):
         self.urls = urls
         self.semaphore = asyncio.Semaphore(sem_size)
         self.char_mode = char_mode
         self.if_report = if_report
+        self.report_path = report_path
+        self.stats = Statistics()
 
         if headers is not None:
             self.headers = headers

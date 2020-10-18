@@ -1,10 +1,12 @@
 import logging
 import json
+import os
 
 from datetime import datetime
 
 
 class Statistics:
+
     data = {
         'excepted': [],
         'redirected': [],
@@ -13,6 +15,11 @@ class Statistics:
         'mirrored_vuln': [],
         'credentials_vuln': []
     }
+
+    def __init__(self, save_path='./report/'):
+        self.save_path = save_path
+        if not os.path.isdir(self.save_path):
+            os.mkdir(self.save_path)
 
     def print_results(self):
         logging.info("\n--------------------------------------------")
@@ -31,10 +38,10 @@ class Statistics:
         logging.info("--------------------------------------------")
 
     def save_json(self):
-        filename = self.get_filename()
+        filename = self.get_fullpath()
         with open(filename, 'w+') as json_file:
             json.dump(self.data, json_file)
 
-    def get_filename(self):
+    def get_fullpath(self):
         now = datetime.now()
-        return now.strftime('%Y%m%d_%H%M%S_cors.json')
+        return f"{self.save_path}{now.strftime('%Y%m%d_%H%M%S_cors.json')}"
