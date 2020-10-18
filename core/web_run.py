@@ -6,7 +6,12 @@ import os
 
 @timer
 def web_run(url, log_lvl, log_filename, char_mode, report_path):
-    setup_logger(log_level(log_lvl), log_filename)
+    if not os.path.isdir(self.log_filename):
+            os.mkdir(self.log_filename)
+    if not os.path.isdir(self.report_path):
+            os.mkdir(self.report_path)
+    
+    setup_logger(log_level(log_lvl), os.path.join(log_filename, 'logs.txt'))
     url = normalize_url(url.strip())
     sem_size = 5000
 
