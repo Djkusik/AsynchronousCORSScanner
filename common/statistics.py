@@ -47,7 +47,7 @@ class Statistics:
     def get_fullpath(self):
         now = datetime.now()
         today_folder = self.get_today_folder(now)
-        return f"{self.today_folder}/{now.strftime('%H%M%S_cors.json')}"
+        return f"{today_folder}/{now.strftime('%H%M%S_cors.json')}"
 
     def get_today_folder(self, now):
         today_folder = f"{self.save_path}/{now.strftime('%Y%m%d')}"
