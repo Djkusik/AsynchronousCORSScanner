@@ -21,10 +21,10 @@ def setup_logger(level=logging.INFO, filename=None):
     handlers = []
 
     if filename is None:
-        handlers.append(setup_logger_stream(formatter))
+        handlers.append(setup_logger_stream(formatter, level))
     else:
-        handlers.append(setup_logger_file(formatter, filename))
-        handlers.append(setup_logger_stream(formatter))
+        handlers.append(setup_logger_file(formatter, level, filename))
+        handlers.append(setup_logger_stream(formatter, level))
 
     logger.setLevel(level)
     for handler in handlers:
@@ -32,15 +32,17 @@ def setup_logger(level=logging.INFO, filename=None):
 
 
 # # sys.stdout mainly for debugging purposes
-def setup_logger_stream(formatter):
+def setup_logger_stream(formatter, level):
     sh = logging.StreamHandler(stream=sys.stdout)
     sh.setFormatter(formatter)
+    sh.setLevel(level)
     return sh
 
 
-def setup_logger_file(formatter, filename):
+def setup_logger_file(formatter, level, filename):
     fh = logging.FileHandler(filename)
     fh.setFormatter(formatter)
+    fh.setLevel(level)
     return fh
 
 

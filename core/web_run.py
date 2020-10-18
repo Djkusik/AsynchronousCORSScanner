@@ -5,13 +5,13 @@ import os
 
 
 @timer
-def web_run(url, log_lvl, log_filename, char_mode, report_path):
-    if not os.path.isdir(log_filename):
-            os.mkdir(log_filename)
+def web_run(url, log_lvl, log_path, char_mode, report_path):
+    if not os.path.isdir(log_path):
+            os.mkdir(log_path)
     if not os.path.isdir(report_path):
             os.mkdir(report_path)
     
-    setup_logger(log_level(log_lvl), (log_filename + 'logs.txt'))
+    setup_logger(log_level(log_lvl), f"{log_path}/cors.log")
     url = normalize_url(url.strip())
     sem_size = 5000
 
