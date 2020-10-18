@@ -1,8 +1,8 @@
-import logging
 import json
 import os
 
 from datetime import datetime
+from common.logger import get_logger
 
 
 class Statistics:
@@ -21,21 +21,23 @@ class Statistics:
         if not os.path.isdir(self.save_path):
             os.mkdir(self.save_path)
 
+        self.logger = get_logger()
+
     def print_results(self):
-        logging.info("\n--------------------------------------------")
-        logging.info("Exception during connection:")
-        logging.info(len(self.data['excepted']))
-        logging.info("400 returned:")
-        logging.info(len(self.data['status_400']))
-        logging.info("Redirected to another domain:")
-        logging.info(len(self.data['redirected']))
-        logging.info("Working examples:")
-        logging.info(len(self.data['worked']))
-        logging.info("Mirrored origins:")
-        logging.info(len(self.data['mirrored_vuln']))
-        logging.info("Vulnerable examples:")
-        logging.info(len(self.data['credentials_vuln']))
-        logging.info("--------------------------------------------")
+        self.logger.info("\n--------------------------------------------")
+        self.logger.info("Exception during connection:")
+        self.logger.info(len(self.data['excepted']))
+        self.logger.info("400 returned:")
+        self.logger.info(len(self.data['status_400']))
+        self.logger.info("Redirected to another domain:")
+        self.logger.info(len(self.data['redirected']))
+        self.logger.info("Working examples:")
+        self.logger.info(len(self.data['worked']))
+        self.logger.info("Mirrored origins:")
+        self.logger.info(len(self.data['mirrored_vuln']))
+        self.logger.info("Vulnerable examples:")
+        self.logger.info(len(self.data['credentials_vuln']))
+        self.logger.info("--------------------------------------------")
 
     def save_json(self):
         filename = self.get_fullpath()

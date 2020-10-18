@@ -2,7 +2,6 @@ import asyncio
 import aiohttp
 import tldextract
 import sys
-import logging
 import math
 import inspect
 
