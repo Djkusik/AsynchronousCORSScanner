@@ -8,6 +8,7 @@ import inspect
 
 from core.register import Register
 from common.statistics import Statistics
+from common.logger import get_logger
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -38,6 +39,8 @@ class CORSChecker:
         if headers is not None:
             self.headers = headers
 
+        self.logger = get_logger()
+
     async def fetch(self, url, headers, resp_data):
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.head(
@@ -51,7 +54,7 @@ class CORSChecker:
                 resp_data['status'] = resp.status
                 resp_data['url'] = resp.url
 
-                logging.debug(str(resp.status) + ":: URL: " + url + " :: Testing: " + headers['Origin'])
+                self.logger.debug(str(resp.status) + ":: URL: " + url + " :: Testing: " + headers['Origin'])
                 return await resp.read()
 
     async def bound_fetch(self, url, headers, resp_data):
@@ -73,7 +76,7 @@ class CORSChecker:
             resp_data['response'] = await self.bound_fetch(url, headers, resp_data)
         except TimeoutError as err:
             self.log_exception(url, test_origin)
-            logging.error(err, exc_info=True)
+            self.logger.error(err, exc_info=True)
             return None
         except:
             self.log_exception(url, test_origin)
@@ -90,19 +93,19 @@ class CORSChecker:
 
     def log_exception(self, url, test_origin):
         self.log_stats('excepted', url)
-        logging.warning("Exception during fetching for URL:" + url + " and origin: " + test_origin)
+        self.logger.warning("Exception during fetching for URL:" + url + " and origin: " + test_origin)
 
     def valid_status_code(self, url, test_origin, resp_data):
         if math.floor(resp_data['status'] / 100) == 4:
             self.log_stats('status_400', url)
-            logging.debug("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
+            self.logger.debug("Returned status code 400 for URL:" + url + " and origin: " + test_origin)
             return False
         return True
 
     def valid_redirection_status(self, url, test_origin, resp_data):
         if not self.validate_domain_redirection(url, resp_data['url']):
             self.log_stats('redirected', url)
-            logging.debug("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
+            self.logger.debug("Redirected to another domain for URL:" + url + " and origin: " + test_origin + " redirected to the: " + str(resp_data['url']))
             return False
         return True
 
@@ -124,10 +127,10 @@ class CORSChecker:
             resp_credentials = resp_data['headers'].get('access-control-allow-credentials')
 
             if test_origin == resp_origin:
-                logging.info("Returned the same origin for: " + url + " when testing for origin: " + test_origin)
+                self.logger.info("Returned the same origin for: " + url + " when testing for origin: " + test_origin)
                 self.add_vuln_domain('mirrored_origin', fname, url, test_origin)
             if resp_credentials == "true":
-                logging.info("Returned with credentials for: " + url + " when testing for origin: " + test_origin)
+                self.logger.info("Returned with credentials for: " + url + " when testing for origin: " + test_origin)
                 self.add_vuln_domain('credentials', fname, url, test_origin)
 
     def add_vuln_domain(self, type, fname, url, test_origin):

@@ -37,6 +37,6 @@ def parse_args():
     cmd_args.log_filename = args.file
     cmd_args.char_mode = args.char
     cmd_args.if_report = args.report
-    cmd_args_report_path = args.report_path
+    cmd_args.report_path = args.report_path
 
     return cmd_args

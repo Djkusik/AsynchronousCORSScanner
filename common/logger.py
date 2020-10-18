@@ -2,6 +2,7 @@ import logging
 import logging.handlers
 import sys
 
+global logger
 
 def log_level(val):
     return {
@@ -14,24 +15,35 @@ def log_level(val):
 
 
 def setup_logger(level=logging.INFO, filename=None):
-    log_format = ('%(asctime)s::%(levelname)s:: %(message)s')
+    global logger
+    logger = logging.getLogger('cors')
+    formatter = logging.Formatter('%(asctime)s::%(levelname)s:: %(message)s')
     handlers = []
-    if filename is None:
-        handlers.append(setup_logger_stream())
-    else:
-        handlers.append(setup_logger_file(filename))
-        handlers.append(setup_logger_stream())
 
-    logging.basicConfig(
-        level=level,
-        format=log_format,
-        handlers=handlers
-    )
+    if filename is None:
+        handlers.append(setup_logger_stream(formatter))
+    else:
+        handlers.append(setup_logger_file(formatter, filename))
+        handlers.append(setup_logger_stream(formatter))
+
+    logger.setLevel(level)
+    for handler in handlers:
+        logger.addHandler(handler)
+
 
 # # sys.stdout mainly for debugging purposes
-def setup_logger_stream():
-    return logging.StreamHandler(stream=sys.stdout)
+def setup_logger_stream(formatter):
+    sh = logging.StreamHandler(stream=sys.stdout)
+    sh.setFormatter(formatter)
+    return sh
 
 
-def setup_logger_file(filename):
-    return logging.FileHandler(filename)
+def setup_logger_file(formatter, filename):
+    fh = logging.FileHandler(filename)
+    fh.setFormatter(formatter)
+    return fh
+
+
+def get_logger():
+    global logger
+    return logger

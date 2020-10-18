@@ -44,4 +44,4 @@ class Statistics:
 
     def get_fullpath(self):
         now = datetime.now()
-        return f"{self.save_path}{now.strftime('%Y%m%d_%H%M%S_cors.json')}"
+        return f"{self.save_path}/{now.strftime('%Y%m%d_%H%M%S_cors.json')}"
