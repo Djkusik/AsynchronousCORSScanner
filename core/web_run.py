@@ -16,6 +16,6 @@ def web_run(url, log_lvl, log_path, char_mode, report_path, report_name):
     url = normalize_url(url.strip())
     sem_size = 5000
 
-    stats = Statistics(report_path, True, report_name)
-    checker = CORSChecker(url, sem_size, char_mode=char_mode, stats=stats)
+    stats = Statistics(report_path, report_name)
+    checker = CORSChecker(url, sem_size, char_mode=char_mode, stats=stats, if_report=True)
     checker.run()

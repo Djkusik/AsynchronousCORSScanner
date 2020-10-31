@@ -16,7 +16,7 @@ class Statistics:
         'credentials_vuln': []
     }
 
-    def __init__(self, save_path='./report/', if_report=False, report_name=None):
+    def __init__(self, save_path='./report/', report_name=None):
         self.save_path = save_path
         self.report_name = report_name
 

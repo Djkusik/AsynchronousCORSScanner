@@ -23,11 +23,12 @@ class CORSChecker:
     headers = None
     register = Register()
 
-    def __init__(self, urls, sem_size, stats, headers=None, char_mode=0, is_proxy=False):
+    def __init__(self, urls, sem_size, stats, headers=None, char_mode=0, is_proxy=False, if_report=False):
         self.urls = urls
         self.char_mode = char_mode
         self.stats = stats
         self.is_proxy = is_proxy
+        self.if_report = if_report
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)

@@ -31,7 +31,7 @@ def main():
 def run(urls, cmd_args):
     global sem_size
     stats = Statistics(cmd_args.report_path, cmd_args.if_report)
-    checker = CORSChecker(urls, sem_size, cmd_args.headers, cmd_args.char_mode, stats)
+    checker = CORSChecker(urls, sem_size, headers=cmd_args.headers, char_mode=cmd_args.char_mode, stats=stats)
     checker.run()
 
 
