@@ -6,7 +6,6 @@ import math
 import inspect
 
 from core.register import Register
-from common.statistics import Statistics
 from common.logger import get_logger
 
 import urllib3
@@ -24,12 +23,11 @@ class CORSChecker:
     headers = None
     register = Register()
 
-    def __init__(self, urls, sem_size, headers=None, char_mode=0, if_report=False, report_path='./report/'):
+    def __init__(self, urls, sem_size, stats, headers=None, char_mode=0, is_proxy=False):
         self.urls = urls
         self.char_mode = char_mode
-        self.if_report = if_report
-        self.report_path = report_path
-        self.stats = Statistics(self.report_path)
+        self.stats = stats
+        self.is_proxy = is_proxy
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -37,6 +35,11 @@ class CORSChecker:
 
         if headers is not None:
             self.headers = headers
+        
+        if self.is_proxy:
+            self.proxy = 'http://127.0.0.1:8080'
+        else:
+            self.proxy = None
 
         self.logger = get_logger()
 
@@ -47,7 +50,7 @@ class CORSChecker:
                 ssl=False,
                 timeout=10,
                 allow_redirects=True,
-                # proxy='http://127.0.0.1:8081',
+                proxy=self.proxy
             ) as resp:
                 resp_data['headers'] = resp.headers
                 resp_data['status'] = resp.status
@@ -229,7 +232,7 @@ class CORSChecker:
     def run(self):
         tasks = []
         # Default policy for Python 3.8 cannot handle proxy, which could be useful for debugging
-        if sys.platform == 'win32':
+        if sys.platform == 'win32' and self.is_proxy:
             loop_policy = asyncio.WindowsSelectorEventLoopPolicy()
             asyncio.set_event_loop_policy(loop_policy)
 

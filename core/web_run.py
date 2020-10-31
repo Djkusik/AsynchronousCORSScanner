@@ -5,7 +5,7 @@ import os
 
 
 @timer
-def web_run(url, log_lvl, log_path, char_mode, report_path):
+def web_run(url, log_lvl, log_path, char_mode, report_path, report_name):
     if not os.path.isdir(log_path):
             os.mkdir(log_path)
     if not os.path.isdir(report_path):
@@ -15,5 +15,6 @@ def web_run(url, log_lvl, log_path, char_mode, report_path):
     url = normalize_url(url.strip())
     sem_size = 5000
 
-    checker = CORSChecker(url, sem_size, char_mode=char_mode, if_report=True, report_path=report_path)
+    stats = Statistics(report_path, True, report_name)
+    checker = CORSChecker(url, sem_size, char_mode=char_mode, stats=stats)
     checker.run()

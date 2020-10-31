@@ -16,8 +16,10 @@ class Statistics:
         'credentials_vuln': []
     }
 
-    def __init__(self, save_path='./report/'):
+    def __init__(self, save_path='./report/', if_report=False, report_name=None):
         self.save_path = save_path
+        self.report_name = report_name
+
         if not os.path.isdir(self.save_path):
             os.mkdir(self.save_path)
 
@@ -47,7 +49,11 @@ class Statistics:
     def get_fullpath(self):
         now = datetime.now()
         today_folder = self.get_today_folder(now)
-        return f"{today_folder}/{now.strftime('%H%M%S_cors.json')}"
+
+        if self.report_name is not None:
+            return f"{today_folder}/{self.report_name}"
+        else:
+            return f"{today_folder}/{now.strftime('%H%M%S_cors.json')}"
 
     def get_today_folder(self, now):
         today_folder = f"{self.save_path}/{now.strftime('%Y%m%d')}"
