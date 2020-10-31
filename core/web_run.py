@@ -1,4 +1,5 @@
 from core.cors_checker import CORSChecker
+from common.statistics import Statistics
 from common.utils import normalize_url, timer
 from common.logger import setup_logger, log_level
 import os
