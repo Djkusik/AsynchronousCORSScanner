@@ -18,13 +18,13 @@ class Args:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--list', help='Path to file with domain list', type=str)
-    parser.add_argument('-d', '--domain', help='Domain', type=str)
-    parser.add_argument('-v', '--verbosity', help="Logging level", type=int, choices=range(1,6), default=4)
-    parser.add_argument('-f', '--file', help='Path to log file', type=str)
-    parser.add_argument('-c', '--char', help='Bigger number will result in wider tests which uses special characters', type=int, choices=range(0,3), default=0)
-    parser.add_argument('-r', '--report', help='Create report', action='store_true')
-    parser.add_argument('-rp', '--report-path', help='Path where to create a report', type=str, default='./report/')
+    parser.add_argument('-l', '--list', help='path to file with domain list', type=str)
+    parser.add_argument('-d', '--domain', help='domain to test', type=str)
+    parser.add_argument('-v', '--verbosity', help="logging level", type=int, choices=range(1,6), default=4)
+    parser.add_argument('-f', '--file', help='path to log file', type=str)
+    parser.add_argument('-c', '--char', help='bigger number will result in wider tests which uses special characters', type=int, choices=range(0,3), default=0)
+    parser.add_argument('-r', '--report', help='create report', action='store_true')
+    parser.add_argument('-rp', '--report-path', help='path where to create a report', type=str, default='./report/')
     args = parser.parse_args()
 
     cmd_args = Args()
