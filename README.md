@@ -3,10 +3,16 @@
 
 ## Installation
 
+Raw install:
 ```sh
 git clone https://github.com/Djkusik/AsynchronousCORSScanner.git
 cd AsynchronousCORSScanner
 pip install -r requirements.txt
+```
+
+Using docker:
+```sh
+docker build -t cors_scanner .
 ```
 
 ### Usage example
@@ -14,6 +20,9 @@ pip install -r requirements.txt
 ```sh
 python cors_scanner.py -d example.com -v 5 -f output.log
 python cors_scanner.py -l top_100.txt
+
+# Or with docker
+docker run -v ~/:/home/cors_scanner/report --user $(id -u):cors_scanner cors_scanner -d example.com -r
 ```
 
 ### Flags
