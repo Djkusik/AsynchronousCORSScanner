@@ -4,7 +4,7 @@ async-timeout==3.0.1
 attrs==19.3.0
 brotlipy==0.7.0
 cchardet==2.1.6
-certifi==2020.4.5.2
+certifi==2022.12.7
 cffi==1.14.0
 chardet==3.0.4
 idna==2.9
